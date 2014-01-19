@@ -150,28 +150,59 @@ function &DB($params = '', $query_builder_override = NULL)
 
 	require_once(BASEPATH.'database/DB_driver.php');
 
+	// Load extended MY_DB_driver if exists
+	$MY_DB_driver_class = config_item('subclass_prefix').'DB_driver';
+	if(file_exists(APPPATH.'database/'.config_item('subclass_prefix').'DB_driver.php'))
+	{
+		require_once(APPPATH.'database/'.config_item('subclass_prefix').'DB_driver.php');
+	}
+
 	if ( ! isset($query_builder) OR $query_builder === TRUE)
 	{
 		require_once(BASEPATH.'database/DB_query_builder.php');
+		
+		// Load extended MY_DB_query_builder if exists
+		$MY_DB_query_builder_class = config_item('subclass_prefix').'DB_query_builder';
+		if(file_exists(APPPATH.'database/'.config_item('subclass_prefix').'DB_query_builder.php'))
+		{
+			require_once(APPPATH.'database/'.config_item('subclass_prefix').'DB_query_builder.php');
+		}
+
 		if ( ! class_exists('CI_DB', FALSE))
 		{
-			/**
-			 * CI_DB
-			 *
-			 * Acts as an alias for both CI_DB_driver and CI_DB_query_builder.
-			 *
-			 * @see	CI_DB_query_builder
-			 * @see	CI_DB_driver
-			 */
-			class CI_DB extends CI_DB_query_builder { }
+			if(class_exists($MY_DB_query_builder_class))
+			{
+				eval('class CI_DB extends '.$MY_DB_query_builder_class.' { }');
+			}
+			else
+			{
+				/**
+				 * CI_DB
+				 *
+				 * Acts as an alias for both CI_DB_driver and CI_DB_query_builder.
+				 *
+				 * @see	CI_DB_query_builder
+				 * @see	CI_DB_driver
+				 */
+				class CI_DB extends CI_DB_query_builder { };
+			}
+			
 		}
 	}
 	elseif ( ! class_exists('CI_DB', FALSE))
 	{
-		/**
-	 	 * @ignore
-		 */
-		class CI_DB extends CI_DB_driver { }
+		if(class_exists($MY_DB_driver_class))
+		{
+			eval('class CI_DB extends '.$MY_DB_driver_class.' { }');
+		}
+		else
+		{
+			/**
+		 	 * @ignore
+			 */
+			class CI_DB extends CI_DB_driver { }
+		}
+			
 	}
 
 	// Load the DB driver
@@ -184,8 +215,19 @@ function &DB($params = '', $query_builder_override = NULL)
 
 	require_once($driver_file);
 
+	// Load extended drivers
+	$MY_DB_driver_class = config_item('subclass_prefix').'DB_'.$params['dbdriver'].'_driver';
+	if(file_exists(APPPATH.'database/drivers/'.$params['dbdriver'].'/'.$MY_DB_driver_class.'.php'))
+	{
+		require_once(APPPATH.'database/drivers/'.$params['dbdriver'].'/'.$MY_DB_driver_class.'.php');
+	}
+
 	// Instantiate the DB adapter
 	$driver = 'CI_DB_'.$params['dbdriver'].'_driver';
+	if(class_exists($MY_DB_driver_class))
+	{
+		$driver = $MY_DB_driver_class;
+	}
 	$DB = new $driver($params);
 
 	// Check for a subdriver
